@@ -1,0 +1,45 @@
+# === Archivos del sistema/IDE ===
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.bak
+
+# Configuraciones de IDEs
+.vscode/
+.idea/
+
+# === Backend (Python) ===
+# Entornos virtuales
+venv/
+ENV/
+env/
+
+# Archivos compilados/caché de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+
+# Variables de entorno
+.env
+*.env
+
+# Logs
+*.log
+
+# === Frontend (React) ===
+frontend/node_modules/
+frontend/build/
+frontend/coverage/
+frontend/.eslintcache
+
+# Entornos de React
+frontend/.env*
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# Exportaciones (opcional, si no quieres subir PDFs generados)
+*.pdf
