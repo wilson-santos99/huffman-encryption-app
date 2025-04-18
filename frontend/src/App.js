@@ -167,7 +167,6 @@ function App() {
             <div className="encrypted-message">{encrypted}</div>
           </section>
 
-          
           {/* Tabla de códigos Huffman */}
           {Object.keys(codebook).length > 0 && (
             <section className="codebook-section">
@@ -214,29 +213,30 @@ function App() {
                 Descargar Árbol en PDF
               </button>
             </section>
-            
           )}
+
+          {/* Tabla de frecuencias - DENTRO DEL BLOQUE encrypted */}
+          <section className="frequency-section">
+            <h3>Frecuencias de Caracteres</h3>
+            <div className="frequency-table">
+              <table>
+                {Object.entries(
+                  phrase.split('').reduce((acc, char) => ({ 
+                    ...acc, 
+                    [char]: (acc[char] || 0) + 1 
+                  }), {})
+                ).map(([char, freq]) => (
+                  <tr key={char}>
+                    <td>{char === ' ' ? '[espacio]' : char}</td>
+                    <td>{freq}</td>
+                  </tr>
+                ))}
+              </table>
+            </div>
+          </section>
         </>
       )}
-          <section>
-          {/*componente para frecuencias: */}
-<div className="frequency-table">
-  <h3>Frecuencias de Caracteres</h3>
-  <table>
-    {Object.entries(
-      phrase.split('').reduce((acc, char) => ({ 
-        ...acc, 
-        [char]: (acc[char] || 0) + 1 
-      }), {})
-    ).map(([char, freq]) => (
-      <tr key={char}>
-        <td>{char === ' ' ? '[espacio]' : char}</td>
-        <td>{freq}</td>
-      </tr>
-    ))}
-  </table>
-</div>
-          </section>
+
       {/* Sección de desencriptación - solo visible con mensaje encriptado */}
       {encrypted && (
         <section className="decrypt-section">
@@ -254,7 +254,6 @@ function App() {
             </div>
           )}
         </section>
-        
       )}
     </div>
   );
