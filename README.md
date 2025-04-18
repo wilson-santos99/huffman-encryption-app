@@ -25,9 +25,9 @@ Implementación de un sistema web para encriptación/desencriptación usando **�
 
 ## 👥 Integrantes
 | Nombre                     | Carné     |
-|----------------------------|-----------|
-| Wilson Manuel Santos Ajcot | 201907179 |
-| [Nombre Compañero]         | [Carné]   |
+|----------------------------------|-----------|
+| Wilson Manuel Santos Ajcot       | 201907179 |
+| Fredy Alexander Galicia Flores   | 202401938 |
 
 ## 📦 Instalación
 ```bash
