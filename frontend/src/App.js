@@ -4,90 +4,97 @@ import './App.css';
 
 function App() {
   // Estados de la aplicación
-  const [phrase, setPhrase] = useState(''); // Almacena la frase a encriptar
-  const [encrypted, setEncrypted] = useState(''); // Almacena el mensaje encriptado
-  const [treeImageUrl, setTreeImageUrl] = useState(''); // URL de la imagen del árbol
-  const [codebook, setCodebook] = useState({}); // Diccionario de códigos Huffman
-  const [decrypted, setDecrypted] = useState(''); // Mensaje desencriptado
-  const [loading, setLoading] = useState(false); // Estado de carga
-  const [error, setError] = useState(null); // Mensajes de error
+  const [phrase, setPhrase] = useState('');
+  const [encrypted, setEncrypted] = useState('');
+  const [treeImageUrl, setTreeImageUrl] = useState('');
+  const [codebook, setCodebook] = useState({});
+  const [decrypted, setDecrypted] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [logs, setLogs] = useState([]);
+
+  // Función para agregar logs (solo visibles en la consola)
+  const addLog = (message) => {
+    const timestamp = new Date().toLocaleTimeString();
+    const logMessage = `[${timestamp}] ${message}`;
+    setLogs(prev => [logMessage, ...prev].slice(0, 50)); // Se mantiene por si se quiere usar más adelante
+    console.log(logMessage); // Solo se imprime en consola
+  };
 
   /**
-   * Maneja la descarga del árbol en formato PDF
-   * @async
+   * Maneja la descarga del árbol de Huffman en formato PDF
    */
   const handleDownloadPDF = async () => {
     try {
       setLoading(true);
-      setError(null); // Limpiar errores previos
-      
-      // Hacer petición para obtener el PDF
+      setError(null);
+      addLog("Iniciando descarga del árbol en PDF...");
+
       const response = await axios.get("http://localhost:5000/static/huffman_tree.pdf", {
-        responseType: "blob", // Especificar que esperamos un archivo binario
-        timeout: 10000 // Timeout de 10 segundos
+        responseType: "blob",
+        timeout: 10000
       });
-      
-      // Validar que recibimos datos
+
       if (!response.data) {
+        addLog("Error: No se recibieron datos del PDF");
         throw new Error('No se recibieron datos del PDF');
       }
 
-      // Crear enlace temporal para descarga
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", "huffman_tree.pdf"); // Forzar descarga
+      link.setAttribute("download", "huffman_tree.pdf");
       document.body.appendChild(link);
-      link.click(); // Simular click
-      link.remove(); // Limpiar el DOM
+      link.click();
+      link.remove();
+
+      addLog("Árbol descargado exitosamente en formato PDF");
     } catch (error) {
-      console.error("Error al descargar PDF:", error);
-      // Mostrar error específico si está disponible, o mensaje genérico
-      setError(error.response?.data?.error || "Error al descargar el PDF. Verifica que el árbol haya sido generado.");
+      const errorMsg = error.response?.data?.error || "Error al descargar el PDF";
+      addLog(`Error en descarga: ${errorMsg}`);
+      setError(errorMsg);
     } finally {
-      setLoading(false); // Terminar estado de carga
+      setLoading(false);
     }
   };
 
   /**
    * Maneja el envío del formulario para encriptar la frase
-   * @param {Event} e - Evento del formulario
    */
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(null); // Resetear errores
-    
-    // Validación básica
+    setError(null);
+
     if (!phrase.trim()) {
+      addLog("Validación fallida: No se ingresó ninguna frase");
       setError("Por favor ingresa una frase válida.");
       return;
     }
 
     try {
       setLoading(true);
-      // Petición al backend para encriptar
-      const response = await axios.post('http://localhost:5000/api/encrypt', {
-        phrase
-      }, {
-        timeout: 10000 // Timeout de 10 segundos
-      });
+      addLog(`Iniciando encriptación de la frase: "${phrase}"`);
 
-      // Validar estructura de respuesta
+      const response = await axios.post('http://localhost:5000/api/encrypt', { phrase }, { timeout: 10000 });
+
       if (!response.data?.encrypted_message || !response.data?.codebook) {
+        addLog("Error: Respuesta del servidor incompleta");
         throw new Error('Respuesta del servidor incompleta');
       }
 
-      // Actualizar estados con la respuesta
       setEncrypted(response.data.encrypted_message);
-      setTreeImageUrl(`/static/huffman_tree.png?t=${Date.now()}`); // Timestamp para evitar caché
+      setTreeImageUrl(`/static/huffman_tree.png?t=${Date.now()}`); // Forzar actualización de imagen
       setCodebook(response.data.codebook);
-      setDecrypted(''); // Resetear desencriptado anterior
+      setDecrypted('');
+
+      addLog(`Frase encriptada exitosamente: ${response.data.encrypted_message}`);
+      addLog("Tabla de códigos recibida:");
+      Object.entries(response.data.codebook).forEach(([char, code]) => {
+        addLog(`  "${char === ' ' ? '[espacio]' : char}": ${code}`);
+      });
     } catch (err) {
-      console.error(err);
-      // Priorizar mensajes de error: respuesta del servidor > mensaje de error > genérico
-      const errorMessage = err.response?.data?.error || 
-                         err.message || 
-                         "Error al encriptar la frase. Verifica tu conexión.";
+      const errorMessage = err.response?.data?.error || err.message || "Error al encriptar la frase";
+      addLog(`Error en encriptación: ${errorMessage}`);
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -95,16 +102,17 @@ function App() {
   };
 
   /**
-   * Maneja la desencriptación del mensaje
+   * Maneja la desencriptación del mensaje binario usando la frase original
    */
   const handleDecrypt = async () => {
-    // Validación silenciosa (el botón ya está deshabilitado si no hay contenido)
     if (!encrypted || !phrase) return;
-    
+
     try {
       setLoading(true);
       setError(null);
-      // Petición al backend para desencriptar
+      addLog(`Iniciando desencriptación del mensaje binario: ${encrypted}`);
+      addLog(`Usando frase original para reconstruir árbol: "${phrase}"`);
+
       const response = await axios.post('http://localhost:5000/api/decrypt', {
         binary: encrypted,
         original: phrase
@@ -112,19 +120,16 @@ function App() {
         timeout: 10000
       });
 
-      // Validar respuesta
       if (!response.data?.decrypted_message) {
+        addLog("Error: No se recibió mensaje desencriptado");
         throw new Error('No se recibió mensaje desencriptado');
       }
 
-      // Actualizar estado con mensaje desencriptado
       setDecrypted(response.data.decrypted_message);
+      addLog(`Mensaje desencriptado exitosamente: "${response.data.decrypted_message}"`);
     } catch (err) {
-      console.error(err);
-      // Manejo de errores similar a handleSubmit
-      const errorMessage = err.response?.data?.error || 
-                         err.message || 
-                         "Error al desencriptar el mensaje.";
+      const errorMessage = err.response?.data?.error || err.message || "Error al desencriptar el mensaje";
+      addLog(`Error en desencriptación: ${errorMessage}`);
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -134,34 +139,32 @@ function App() {
   return (
     <div className="App">
       <h1>Encriptador Huffman</h1>
-      
-      {/* Mostrar indicador de carga */}
+
+      {/* Indicador de carga */}
       {loading && <div className="loading">Cargando...</div>}
-      
-      {/* Mostrar mensajes de error si existen */}
+
+      {/* Mensaje de error */}
       {error && <div className="error-message">{error}</div>}
 
-      {/* Formulario principal */}
+      {/* Formulario para ingresar frase */}
       <form onSubmit={handleSubmit}>
         <input
           type="text"
           value={phrase}
           onChange={(e) => {
             setPhrase(e.target.value);
-            setError(null); // Limpiar errores al editar
+            setError(null);
           }}
           placeholder="Escribe tu frase"
           disabled={loading}
         />
-        <button type="submit" disabled={loading}>
-          Encriptar
-        </button>
+        <button type="submit" disabled={loading}>Encriptar</button>
       </form>
 
-      {/* Mostrar resultados solo si hay mensaje encriptado */}
+      {/* Resultados tras encriptación */}
       {encrypted && (
         <>
-          {/* Mensaje encriptado */}
+          {/* Mostrar mensaje encriptado */}
           <section>
             <h2>Mensaje Encriptado:</h2>
             <div className="encrypted-message">{encrypted}</div>
@@ -189,10 +192,10 @@ function App() {
                   </tbody>
                 </table>
               </div>
-            </section>  
+            </section>
           )}
 
-          {/* Visualización del árbol */}
+          {/* Imagen del árbol Huffman */}
           {treeImageUrl && (
             <section className="tree-section">
               <h2>Árbol de Huffman:</h2>
@@ -202,51 +205,44 @@ function App() {
                   alt="Árbol Huffman"
                   onError={(e) => {
                     e.target.onerror = null;
-                    e.target.src = 'placeholder-tree.png'; // Fallback si la imagen no carga
+                    e.target.src = 'placeholder-tree.png';
                   }}
                 />
               </div>
-              <button 
-                onClick={handleDownloadPDF} 
-                disabled={loading || !treeImageUrl}
-              >
+              <button onClick={handleDownloadPDF} disabled={loading || !treeImageUrl}>
                 Descargar Árbol en PDF
               </button>
             </section>
           )}
 
-          {/* Tabla de frecuencias - DENTRO DEL BLOQUE encrypted */}
+          {/* Tabla de frecuencias de caracteres */}
           <section className="frequency-section">
             <h3>Frecuencias de Caracteres</h3>
             <div className="frequency-table">
               <table>
-                {Object.entries(
-                  phrase.split('').reduce((acc, char) => ({ 
-                    ...acc, 
-                    [char]: (acc[char] || 0) + 1 
-                  }), {})
-                ).map(([char, freq]) => (
-                  <tr key={char}>
-                    <td>{char === ' ' ? '[espacio]' : char}</td>
-                    <td>{freq}</td>
-                  </tr>
-                ))}
+                <tbody>
+                  {Object.entries(
+                    phrase.split('').reduce((acc, char) => ({
+                      ...acc,
+                      [char]: (acc[char] || 0) + 1
+                    }), {})
+                  ).map(([char, freq]) => (
+                    <tr key={char}>
+                      <td>{char === ' ' ? '[espacio]' : char}</td>
+                      <td>{freq}</td>
+                    </tr>
+                  ))}
+                </tbody>
               </table>
             </div>
           </section>
         </>
       )}
 
-      {/* Sección de desencriptación - solo visible con mensaje encriptado */}
+      {/* Sección de desencriptación */}
       {encrypted && (
         <section className="decrypt-section">
-          <button 
-            onClick={handleDecrypt} 
-            disabled={loading} // Deshabilitar solo durante carga
-          >
-            Desencriptar
-          </button>
-          {/* Mostrar resultado de desencriptación */}
+          <button onClick={handleDecrypt} disabled={loading}>Desencriptar</button>
           {decrypted && (
             <div className="decrypted-message">
               <h2>Mensaje Desencriptado:</h2>

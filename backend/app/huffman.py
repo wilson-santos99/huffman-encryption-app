@@ -1,225 +1,174 @@
-# Importación de módulos necesarios
-import heapq           # Para estructuras de cola de prioridad
-from collections import defaultdict  # Para manejo eficiente de frecuencias
-import graphviz        # Para generación de gráficos del árbol
-import os              # Para operaciones del sistema de archivos
+# Importación de librerías necesarias
+import heapq  # Para implementar la cola de prioridad (heap)
+from collections import defaultdict  # Para contar frecuencias de caracteres fácilmente
+import graphviz  # Para generar la imagen del árbol de Huffman
+import os  # Para manejar rutas si es necesario (aunque no se usa en este archivo)
 
+# Clase que representa un nodo en el árbol de Huffman
 class Node:
-    """Representa un nodo en el árbol de Huffman"""
     def __init__(self, char=None, freq=None):
-        self.char = char  # Carácter (solo en nodos hoja)
-        self.freq = freq  # Frecuencia del carácter/suma de frecuencias
-        self.left = None  # Referencia al hijo izquierdo (bit 0)
-        self.right = None # Referencia al hijo derecho (bit 1)
+        self.char = char  # Caracter que representa el nodo (hoja)
+        self.freq = freq  # Frecuencia del caracter
+        self.left = None  # Hijo izquierdo
+        self.right = None  # Hijo derecho
 
     def __lt__(self, other):
-        """Permite comparar nodos por frecuencia para el ordenamiento"""
+        # Permite comparar nodos por frecuencia (necesario para heapq)
         return self.freq < other.freq
 
+# Función para calcular las frecuencias de cada caracter en una frase
 def calculate_frequencies(phrase):
-    """
-    Calcula la frecuencia de cada carácter en la frase de entrada
-    
-    Args:
-        phrase (str): Cadena de texto a analizar
-        
-    Returns:
-        defaultdict: Diccionario con caracteres como keys y frecuencias como valores
-    """
-    return defaultdict(int, {char: phrase.count(char) for char in phrase})
+    print("\n[HUFFMAN] - Calculando frecuencias de caracteres...")
+    freq_dict = defaultdict(int)
+    for char in phrase:
+        freq_dict[char] += 1
 
+    print("[HUFFMAN] - Frecuencias calculadas:")
+    for char, freq in sorted(freq_dict.items()):
+        print(f"  '{char}': {freq}")
+
+    return freq_dict
+
+# Función para construir el árbol de Huffman a partir de las frecuencias
 def build_huffman_tree(frequencies):
-    """
-    Construye el árbol de Huffman a partir de las frecuencias de caracteres
-    
-    Args:
-        frequencies (dict): Diccionario de frecuencias de caracteres
-        
-    Returns:
-        Node: Nodo raíz del árbol construido
-    """
+    print("\n[HUFFMAN] - Construyendo árbol de Huffman...")
     heap = []
-    count = 0  # Contador para mantener orden con frecuencias iguales
-    
-    # Crear nodo inicial para cada carácter
+    count = 0  # Para evitar colisiones si dos nodos tienen la misma frecuencia
+
+    # Insertamos cada nodo hoja en el heap
     for char, freq in frequencies.items():
         heapq.heappush(heap, (freq, count, Node(char, freq)))
         count += 1
 
-    # Combinar nodos hasta tener un solo árbol
+    # Iteramos hasta que quede un solo nodo (el raíz)
     while len(heap) > 1:
-        # Extraer los dos nodos con menor frecuencia
-        freq1, _, left = heapq.heappop(heap)
-        freq2, _, right = heapq.heappop(heap)
-        
-        # Crear nuevo nodo interno combinando los dos nodos
-        merged = Node(None, freq1 + freq2)
-        merged.left = left
-        merged.right = right
-        
-        # Insertar el nodo combinado de vuelta al heap
+        item1 = heapq.heappop(heap)
+        item2 = heapq.heappop(heap)
+
+        freq1, _, node1 = item1
+        freq2, _, node2 = item2
+
+        # Creamos un nuevo nodo interno combinando los dos de menor frecuencia
+        merged = Node(freq=freq1 + freq2)
+        merged.left = node1
+        merged.right = node2
+
+        # Lo volvemos a insertar en el heap
         heapq.heappush(heap, (merged.freq, count, merged))
         count += 1
 
-    return heap[0][2]  # Retorna el nodo raíz del árbol
+    print("[HUFFMAN] - Árbol de Huffman construido")
+    return heap[0][2]  # Retornamos el nodo raíz
 
+# Función recursiva para generar los códigos binarios Huffman
 def generate_codes(node, prefix='', codebook=None):
-    """
-    Genera los códigos binarios recursivamente recorriendo el árbol
-    
-    Args:
-        node (Node): Nodo actual del árbol
-        prefix (str): Prefijo del código hasta este nodo
-        codebook (dict): Diccionario para almacenar los códigos
-        
-    Returns:
-        dict: Diccionario completo con los códigos Huffman
-    """
     if codebook is None:
         codebook = {}
-    
-    # Si es nodo hoja, almacenar el código generado
+
     if node.char is not None:
+        # Si es hoja, se guarda el código binario generado
         codebook[node.char] = prefix
-    
-    # Recorrer subárbol izquierdo (bit 0)
+
     if node.left:
         generate_codes(node.left, prefix + '0', codebook)
-    
-    # Recorrer subárbol derecho (bit 1)
     if node.right:
         generate_codes(node.right, prefix + '1', codebook)
-    
+
     return codebook
 
+# Codifica una frase utilizando un codebook de Huffman
 def encrypt(phrase, codebook):
-    """
-    Encripta una frase usando la tabla de códigos generada
-    
-    Args:
-        phrase (str): Texto a encriptar
-        codebook (dict): Diccionario de codificación Huffman
-        
-    Returns:
-        str: Mensaje encriptado como secuencia binaria
-    """
-    return ''.join(codebook[char] for char in phrase)
+    print("\n[HUFFMAN] - Codificando mensaje...")
+    encrypted = []
+    for char in phrase:
+        encrypted.append(codebook[char])
 
+    print("[HUFFMAN] - Mensaje codificado:")
+    print(f"  Original: '{phrase}'")
+    print(f"  Codificado: '{''.join(encrypted)}'")
+
+    return ''.join(encrypted)
+
+# Genera una visualización en Graphviz del árbol de Huffman
 def generate_tree_image(root):
-    """
-    Genera una representación visual del árbol de Huffman
-    
-    Args:
-        root (Node): Nodo raíz del árbol
-        
-    Returns:
-        graphviz.Digraph: Objeto gráfico del árbol
-    """
-    # Configuración básica del gráfico
+    print("\n[HUFFMAN] - Generando visualización del árbol...")
     dot = graphviz.Digraph(
         graph_attr={
-            'rankdir': 'TB',    # Orientación Top-to-Bottom
-            'bgcolor': 'white', # Fondo blanco
-            'dpi': '150'        # Resolución media
+            'rankdir': 'TB',
+            'bgcolor': 'transparent',
+            'dpi': '150',
+            'fontname': 'Arial'
         }
     )
-    
-    # Configuración de estilo para los nodos
-    dot.attr('node', 
-             shape='circle',    # Forma circular
-             style='filled',    # Relleno de color
-             fillcolor='white', # Color de relleno
-             color='black',     # Color del borde
-             fontname='Arial',  # Tipografía
-             fontsize='12',     # Tamaño de fuente
-             penwidth='1.5')    # Grosor del borde
-    
-    # Configuración de estilo para las conexiones
+
+    # Estilo de los nodos
+    dot.attr('node',
+             shape='Mrecord',
+             style='filled,rounded',
+             fillcolor='#F0F8FF:#E6E6FA',
+             gradientangle='270',
+             color='#4682B4',
+             fontname='Arial',
+             fontsize='11',
+             penwidth='1.5',
+             margin='0.15,0.05')
+
+    # Estilo de las aristas
     dot.attr('edge',
-             color='black',     # Color de línea
-             arrowsize='0.7',   # Tamaño de flecha
-             penwidth='1.2',    # Grosor de línea
-             fontname='Arial',  # Tipografía
-             fontsize='10')     # Tamaño de fuente
-    
+             color='#708090',
+             arrowsize='0.6',
+             penwidth='1.3',
+             fontname='Arial',
+             fontsize='10')
+
+    # Función recursiva para agregar nodos y conexiones
     def add_nodes_edges(node):
-        """
-        Función auxiliar recursiva para construir el gráfico
-        
-        Args:
-            node (Node): Nodo actual del árbol
-        """
         if node:
-            # Crear etiqueta según tipo de nodo
-            label = f"{node.char}:{node.freq}" if node.char else str(node.freq)
-            
-            # Añadir nodo al gráfico
-            dot.node(str(id(node)), label=label)
-            
-            # Añadir conexión izquierda (bit 0) si existe
+            if node.char is not None:
+                label = f'{{ {node.freq} | {node.char} }}'
+            else:
+                label = f'{{ {node.freq} | }}'
+
+            dot.node(str(id(node)), label=label, fillcolor='#F0F8FF:#E6E6FA', fontcolor='#2F4F4F')
+
             if node.left:
                 dot.edge(str(id(node)), str(id(node.left)), label='0')
-                add_nodes_edges(node.left)  # Llamada recursiva
-            
-            # Añadir conexión derecha (bit 1) si existe
+                add_nodes_edges(node.left)
+
             if node.right:
                 dot.edge(str(id(node)), str(id(node.right)), label='1')
-                add_nodes_edges(node.right)  # Llamada recursiva
-    
-    # Iniciar la construcción del gráfico desde la raíz
+                add_nodes_edges(node.right)
+
     add_nodes_edges(root)
+    print("[HUFFMAN] - Visualización del árbol generada")
     return dot
 
+# Función principal de encriptación Huffman
 def huffman_encrypt(phrase):
-    """
-    Ejecuta el proceso completo de encriptación Huffman
-    
-    Args:
-        phrase (str): Texto a encriptar
-        
-    Returns:
-        tuple: (mensaje_encriptado, imagen_arbol, codebook, raiz_arbol)
-    """
-    # 1. Calcular frecuencias de caracteres
     frequencies = calculate_frequencies(phrase)
-    
-    # 2. Construir el árbol de Huffman
     root = build_huffman_tree(frequencies)
-    
-    # 3. Generar la tabla de códigos
     codebook = generate_codes(root)
-    
-    # 4. Encriptar el mensaje
     encrypted_message = encrypt(phrase, codebook)
-    
-    # 5. Generar la imagen del árbol
     tree_image = generate_tree_image(root)
-    
     return encrypted_message, tree_image, codebook, root
 
+# Función de desencriptación Huffman
 def huffman_decrypt(binary_string, root):
-    """
-    Desencripta un mensaje usando el árbol de Huffman
-    
-    Args:
-        binary_string (str): Mensaje binario a desencriptar
-        root (Node): Raíz del árbol de Huffman original
-        
-    Returns:
-        str: Mensaje desencriptado
-    """
-    result = []      # Para almacenar el resultado
-    current = root   # Comenzar desde la raíz
-    
-    # Recorrer cada bit del mensaje
+    print("\n[HUFFMAN] - Decodificando mensaje...")
+    result = []
+    current = root
+
     for bit in binary_string:
-        # Navegar por el árbol según el bit
-        current = current.left if bit == '0' else current.right
-        
-        # Si llegamos a un nodo hoja
+        if bit == '0':
+            current = current.left
+        else:
+            current = current.right
+
         if current.char is not None:
-            result.append(current.char)  # Agregar carácter al resultado
-            current = root               # Volver a la raíz
-    
-    # Unir todos los caracteres encontrados
-    return ''.join(result)
+            # Se encontró una hoja, se agrega el caracter
+            result.append(current.char)
+            current = root
+
+    decrypted = ''.join(result)
+    print(f"[HUFFMAN] - Mensaje decodificado: '{decrypted}'")
+    return decrypted
