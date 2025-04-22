@@ -41,5 +41,3 @@ frontend/npm-debug.log*
 frontend/yarn-debug.log*
 frontend/yarn-error.log*
 
-# Exportaciones (opcional, si no quieres subir PDFs generados)
-*.pdf
